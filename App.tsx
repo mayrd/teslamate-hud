@@ -206,9 +206,9 @@ export default function App() {
   };
 
   const getBatteryColor = (b: number) => {
-    if (b < 10) return 'text-red-500';
-    if (b < 25) return 'text-yellow-500';
-    return 'text-green-500';
+    if (b < 10) return 'text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]';
+    if (b < 25) return 'text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)]';
+    return 'text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]';
   };
 
   const formatTime = (isoString: string) => {
@@ -249,13 +249,16 @@ export default function App() {
                 <MapPin className="w-10 h-10 md:w-16 md:h-16 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
                 <span className="text-3xl md:text-6xl font-black tracking-tighter uppercase truncate max-w-[80vw] md:max-w-4xl">{displayData.destination}</span>
               </div>
-              <div className="flex items-center justify-center gap-4 md:gap-8 text-gray-400 mt-2 md:mt-4">
+              <div className="flex items-center justify-center gap-4 md:gap-8 text-gray-200 mt-2 md:mt-4 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">
                 <div className="flex items-center gap-3">
-                  <Clock className="w-6 h-6 md:w-10 md:h-10" />
-                  <span className="text-2xl md:text-5xl font-bold">ETA: {formatTime(displayData.estArrivalTime)}</span>
+                  <Clock className="w-6 h-6 md:w-10 md:h-10 text-cyan-300" />
+                  <span className="text-xl md:text-4xl font-bold">ETA: {formatTime(displayData.estArrivalTime)}</span>
                 </div>
                 {displayData.timeToArrival > 0 && (
-                  <span className="text-2xl md:text-5xl font-bold text-gray-600">• {Math.round(displayData.timeToArrival)} min</span>
+                  <span className="flex items-baseline gap-2">
+                    <span className="text-xl md:text-4xl font-bold">• {Math.round(displayData.timeToArrival)}</span>
+                    <span className="text-lg md:text-2xl font-bold text-cyan-200">min</span>
+                  </span>
                 )}
               </div>
             </div>
@@ -268,16 +271,16 @@ export default function App() {
 
             {/* Left Stat (Range) - Only on MD+ */}
             <div className="hidden md:flex flex-col items-center justify-center w-48 text-center">
-              <span className="text-6xl lg:text-8xl font-black text-gray-400">{Math.round(displayData.range)}</span>
-              <span className="text-2xl lg:text-3xl font-bold text-gray-600 uppercase tracking-widest">KM</span>
+              <span className="text-6xl lg:text-8xl font-black text-gray-200 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">{Math.round(displayData.range)}</span>
+              <span className="text-xl lg:text-2xl font-bold text-cyan-300 uppercase tracking-widest">KM</span>
             </div>
 
             {/* Speed (central element) */}
             <div className="flex flex-col items-center text-white">
-              <span className={`text-9xl md:text-[14rem] lg:text-[20rem] leading-none font-black tracking-tighter drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]`}>
+              <span className={`text-9xl md:text-[14rem] lg:text-[20rem] leading-none font-black tracking-tighter drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]`}>
                 {Math.round(displayData.speed)}
               </span>
-              <span className="text-2xl md:text-5xl font-bold text-gray-500 uppercase tracking-widest -mt-2 md:-mt-8">km/h</span>
+              <span className="text-xl md:text-3xl font-bold text-cyan-300 uppercase tracking-widest -mt-2 md:-mt-8 drop-shadow-[0_0_8px_rgba(103,232,249,0.5)]">km/h</span>
             </div>
 
             {/* Right Stat (Gear) - Only on MD+ */}
@@ -297,11 +300,15 @@ export default function App() {
         {/* Bottom: Stats */}
         <div className="grid grid-cols-3 items-end w-full">
           <div className="flex flex-col items-start gap-2">
-            <div className={`flex items-center gap-1 md:gap-5 ${getBatteryColor(displayData.batteryLevel)} font-black`}>
-              <Battery className="w-8 h-8 md:w-20 md:h-20" />
-              <span className="text-4xl md:text-8xl">{displayData.batteryLevel}%</span>
+            <div className={`flex items-baseline gap-1 md:gap-4 ${getBatteryColor(displayData.batteryLevel)} font-black`}>
+              <Battery className="w-8 h-8 md:w-20 md:h-20 self-center" />
+              <span className="text-4xl md:text-8xl">{displayData.batteryLevel}</span>
+              <span className="text-2xl md:text-5xl">%</span>
             </div>
-            <span className="text-lg md:hidden text-gray-500 font-bold ml-1">{Math.round(displayData.range)} KM</span>
+            <div className="flex items-baseline gap-1 md:hidden ml-1 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">
+              <span className="text-2xl font-black text-gray-200">{Math.round(displayData.range)}</span>
+              <span className="text-sm font-bold text-cyan-300 uppercase">KM</span>
+            </div>
           </div>
 
           <div className="flex flex-col items-center justify-end pb-2">
