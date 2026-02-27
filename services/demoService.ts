@@ -58,7 +58,7 @@ export const DEMO_KEYFRAMES: DemoKeyframe[] = [
             speed: 122, power: 28, gear: 'D',
             batteryLevel: 85, range: 395,
             outsideTemp: 5, heading: 87,
-            destination: '',
+            destination: 'Amsterdam Centraal',
             activeRoute: {
                 destination: 'Amsterdam Centraal',
                 energy_at_arrival: 62,
@@ -77,6 +77,7 @@ export const DEMO_KEYFRAMES: DemoKeyframe[] = [
             speed: 130, power: 22, gear: 'D',
             batteryLevel: 80, range: 370,
             outsideTemp: 5, heading: 91,
+            destination: 'Amsterdam Centraal',
             activeRoute: {
                 destination: 'Amsterdam Centraal',
                 energy_at_arrival: 62,
@@ -96,6 +97,7 @@ export const DEMO_KEYFRAMES: DemoKeyframe[] = [
             speed: 30, power: -38, gear: 'D',
             batteryLevel: 79, range: 366,
             outsideTemp: 5, heading: 105,
+            destination: 'Amsterdam Centraal',
             activeRoute: {
                 destination: 'Amsterdam Centraal',
                 energy_at_arrival: 63,

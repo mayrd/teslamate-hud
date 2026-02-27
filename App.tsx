@@ -11,8 +11,8 @@ import {
   FlipHorizontal,
   Zap,
   RefreshCw,
-  MapPin,
   Clock,
+  Navigation,
   Terminal,
   Play
 } from 'lucide-react';
@@ -143,7 +143,15 @@ export default function App() {
     demoIntervalRef.current = setInterval(() => {
       elapsed += TICK / 1000;
       setDemoElapsed(elapsed);
-      setDemoData(getDemoState(elapsed));
+      const state = getDemoState(elapsed);
+      // Auto-calculate arrival time in demo if duration is set in activeRoute
+      const mins = state.activeRoute?.minutes_to_arrival ?? state.timeToArrival;
+      if (mins && !state.estArrivalTime) {
+        const minsNum = Number(mins);
+        state.timeToArrival = minsNum;
+        state.estArrivalTime = new Date(Date.now() + minsNum * 60000).toISOString();
+      }
+      setDemoData(state);
       if (elapsed >= DEMO_DURATION) {
         clearInterval(demoIntervalRef.current);
         setIsDemo(false);
@@ -252,24 +260,33 @@ export default function App() {
         hudMode === HUDMode.FLIPPED ? 'hud-mirror-flipped' : ''
         }`}>
 
-        {/* Top: Nav */}
-        <div className="flex flex-col items-center justify-center">
-          {displayData.destination && (
-            <div className="animate-in fade-in slide-in-from-top duration-700 min-h-[60px] md:min-h-[120px] flex flex-col items-center justify-center">
-              <div className="flex items-center gap-3 md:gap-6 text-cyan-400">
-                <MapPin className="w-10 h-10 md:w-16 md:h-16 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
-                <span className="text-3xl md:text-6xl font-black tracking-tighter uppercase truncate max-w-[80vw] md:max-w-4xl">{displayData.destination}</span>
-              </div>
-              <div className="flex items-center justify-center gap-4 md:gap-8 text-gray-200 mt-2 md:mt-4 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">
-                <div className="flex items-center gap-3">
-                  <Clock className="w-6 h-6 md:w-10 md:h-10 text-cyan-300" />
-                  <span className="text-xl md:text-4xl font-bold">ETA: {formatTime(displayData.estArrivalTime)}</span>
+        {/* Top: Nav (Floating to prevent layout jump) */}
+        <div className="absolute top-2 md:top-4 left-0 right-0 flex flex-col items-center justify-center z-20 pointer-events-none">
+          {(displayData.destination || displayData.activeRoute) && (
+            <div className="animate-in fade-in slide-in-from-top duration-700 flex flex-col items-center justify-center">
+              <div className="flex flex-wrap items-center justify-center gap-x-6 md:gap-x-12 gap-y-2 text-gray-200 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)] bg-black/20 backdrop-blur-sm px-6 py-2 rounded-full border border-white/5">
+                <div className="flex items-center gap-2 md:gap-4">
+                  <Clock className="w-5 h-5 md:w-8 md:h-8 text-cyan-300" />
+                  <span className="text-xl md:text-3xl font-bold">ETA: {formatTime(displayData.estArrivalTime)}</span>
                 </div>
+
                 {displayData.timeToArrival > 0 && (
-                  <span className="flex items-baseline gap-2">
-                    <span className="text-xl md:text-4xl font-bold">• {Math.round(displayData.timeToArrival)}</span>
-                    <span className="text-lg md:text-2xl font-bold text-cyan-200">min</span>
-                  </span>
+                  <div className="flex items-center gap-2 md:gap-4">
+                    <span className="text-gray-500 text-xl font-black">•</span>
+                    <span className="text-xl md:text-3xl font-bold">{Math.round(displayData.timeToArrival)}</span>
+                    <span className="text-lg md:text-xl font-bold text-cyan-200">min</span>
+                  </div>
+                )}
+
+                {displayData.activeRoute?.miles_to_arrival && (
+                  <div className="flex items-center gap-2 md:gap-4">
+                    <span className="text-gray-500 text-xl font-black">•</span>
+                    <Navigation className="w-5 h-5 md:w-8 md:h-8 text-cyan-300 rotate-45" />
+                    <span className="text-xl md:text-3xl font-bold">
+                      {Math.round(units === 'KM' ? displayData.activeRoute.miles_to_arrival * 1.60934 : displayData.activeRoute.miles_to_arrival)}
+                    </span>
+                    <span className="text-lg md:text-xl font-bold text-cyan-200">{distUnit}</span>
+                  </div>
                 )}
               </div>
             </div>
