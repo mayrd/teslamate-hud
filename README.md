@@ -22,8 +22,8 @@ Ensure you configure the required environment variables:
 
 ```yaml
 services:
-  teslahud:
-    image: ghcr.io/<your_github_username>/teslahud:latest
+  teslamate-hud:
+    image: ghcr.io/mayrd/teslamate-hud:latest
     container_name: teslamate-hud
     restart: unless-stopped
     ports:

@@ -9,7 +9,6 @@ import {
   Maximize2,
   Minimize2,
   FlipHorizontal,
-  Battery,
   Zap,
   RefreshCw,
   MapPin,
@@ -59,6 +58,9 @@ export default function App() {
   const [isMqttConnected, setIsMqttConnected] = useState(false);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
+  const [units, setUnits] = useState<'KM' | 'MI'>(() => {
+    return (localStorage.getItem('hud_units') as 'KM' | 'MI') || 'KM';
+  });
 
   // Demo state
   const [isDemo, setIsDemo] = useState(false);
@@ -205,11 +207,14 @@ export default function App() {
     setDebugLogs([]);
   };
 
-  const getBatteryColor = (b: number) => {
-    if (b < 10) return 'text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]';
-    if (b < 25) return 'text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)]';
-    return 'text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]';
+
+
+  const convertValue = (val: number) => {
+    return units === 'MI' ? val * 0.621371 : val;
   };
+
+  const speedUnit = units === 'KM' ? 'km/h' : 'mph';
+  const distUnit = units === 'KM' ? 'KM' : 'MI';
 
   const formatTime = (isoString: string) => {
     if (!isoString) return '';
@@ -228,10 +233,16 @@ export default function App() {
       onTouchEnd={handleTouchEnd}
     >
 
-      {/* Connection Status Dot */}
-      <div className="absolute top-4 right-4 z-40 pointer-events-none">
+      {/* Status & Notifications */}
+      <div className="absolute top-6 right-6 z-40 pointer-events-none flex items-center gap-4 bg-black/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/5">
+        {!isMqttConnected && !showSettings && (
+          <div className="flex items-center gap-3">
+            <RefreshCw className="animate-spin text-yellow-500 w-4 h-4" />
+            <span className="text-yellow-500 font-black uppercase tracking-[0.2em] text-[10px] md:text-xs">Searching for Vehicle...</span>
+          </div>
+        )}
         <div className={`w-3 h-3 rounded-full transition-colors duration-500 ${connectionStatus === 'connected' ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.8)]' :
-          connectionStatus === 'connecting' ? 'bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.8)] animate-pulse' :
+          (!isMqttConnected || connectionStatus === 'connecting') ? 'bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.8)] animate-pulse' :
             'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]'
           }`} />
       </div>
@@ -267,26 +278,33 @@ export default function App() {
 
         {/* Mid: Speed */}
         <div className="relative flex flex-col items-center justify-center">
-          <div className="flex flex-col md:flex-row items-center justify-center md:gap-8 lg:gap-16 w-full">
+          <div className="grid grid-cols-3 items-center w-full relative">
 
-            {/* Left Stat (Range) - Only on MD+ */}
-            <div className="hidden md:flex flex-col items-center justify-center w-48 text-center">
-              <span className="text-6xl lg:text-8xl font-black text-gray-200 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">{Math.round(displayData.range)}</span>
-              <span className="text-xl lg:text-2xl font-bold text-cyan-300 uppercase tracking-widest">KM</span>
+            <div className="hidden md:flex justify-start pl-4 lg:pl-12">
+              <div className="flex flex-col items-center justify-center w-48 text-center shrink-0">
+                <span className={`text-6xl lg:text-8xl font-black transition-colors duration-500 ${displayData.range <= 25 ? 'text-red-500 drop-shadow-[0_0_20px_rgba(239,68,68,0.8)]' : 'text-gray-200 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]'}`}>
+                  {Math.round(convertValue(displayData.range))}
+                </span>
+                <span className="text-xl lg:text-2xl font-bold text-cyan-300 uppercase tracking-widest">{distUnit}</span>
+              </div>
             </div>
 
             {/* Speed (central element) */}
-            <div className="flex flex-col items-center text-white">
-              <span className={`text-9xl md:text-[14rem] lg:text-[20rem] leading-none font-black tracking-tighter drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]`}>
-                {Math.round(displayData.speed)}
-              </span>
-              <span className="text-xl md:text-3xl font-bold text-cyan-300 uppercase tracking-widest -mt-2 md:-mt-8 drop-shadow-[0_0_8px_rgba(103,232,249,0.5)]">km/h</span>
+            <div className="flex flex-col items-center justify-center text-white">
+              <div className="flex flex-col items-center">
+                <span className="text-8xl md:text-[14rem] lg:text-[20rem] leading-none font-black tabular-nums tracking-tight drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]">
+                  {Math.round(convertValue(displayData.speed))}
+                </span>
+                <span className="text-xl md:text-3xl font-bold text-cyan-300 uppercase tracking-widest -mt-2 md:-mt-8 drop-shadow-[0_0_8px_rgba(103,232,249,0.5)]">{speedUnit}</span>
+              </div>
             </div>
 
             {/* Right Stat (Gear) - Only on MD+ */}
-            <div className="hidden md:flex items-center justify-center w-48">
-              <div className="text-6xl lg:text-8xl font-black text-white italic tracking-tighter w-28 lg:w-32 text-center bg-white/5 px-4 py-2 rounded-2xl border border-white/10">
-                {displayData.gear || 'P'}
+            <div className="hidden md:flex justify-end pr-4 lg:pr-12">
+              <div className="flex items-center justify-center w-48 shrink-0">
+                <div className="text-6xl lg:text-8xl font-black text-white italic tracking-tighter w-28 lg:w-32 text-center bg-white/5 px-4 py-2 rounded-2xl border border-white/10">
+                  {displayData.gear || 'P'}
+                </div>
               </div>
             </div>
           </div>
@@ -300,14 +318,12 @@ export default function App() {
         {/* Bottom: Stats */}
         <div className="grid grid-cols-3 items-end w-full">
           <div className="flex flex-col items-start gap-2">
-            <div className={`flex items-baseline gap-1 md:gap-4 ${getBatteryColor(displayData.batteryLevel)} font-black`}>
-              <Battery className="w-8 h-8 md:w-20 md:h-20 self-center" />
-              <span className="text-4xl md:text-8xl">{displayData.batteryLevel}</span>
-              <span className="text-2xl md:text-5xl">%</span>
-            </div>
+
             <div className="flex items-baseline gap-1 md:hidden ml-1 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">
-              <span className="text-2xl font-black text-gray-200">{Math.round(displayData.range)}</span>
-              <span className="text-sm font-bold text-cyan-300 uppercase">KM</span>
+              <span className={`text-2xl font-black transition-colors duration-500 ${displayData.range <= 25 ? 'text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'text-gray-200'}`}>
+                {Math.round(convertValue(displayData.range))}
+              </span>
+              <span className="text-sm font-bold text-cyan-300 uppercase">{distUnit}</span>
             </div>
           </div>
 
@@ -343,22 +359,16 @@ export default function App() {
 
       {/* Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 md:p-6 cursor-default">
-          <div className="bg-gray-900 border border-gray-800 rounded-3xl md:rounded-[40px] w-full max-w-2xl flex flex-col max-h-[95dvh] text-white animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-2 md:p-6 cursor-default">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl md:rounded-[40px] w-full max-w-2xl flex flex-col max-h-[98dvh] text-white animate-in zoom-in-95 duration-200">
 
-            {/* Header */}
-            <div className="px-6 py-5 md:px-10 md:py-8 border-b border-gray-800 shrink-0 flex items-center justify-between">
-              <h2 className="text-2xl md:text-4xl font-black flex items-center gap-4">
-                <Settings className="w-8 h-8 md:w-10 md:h-10 text-blue-500" /> HUD Config
-              </h2>
-              <button type="button" onClick={() => setShowSettings(false)} className="p-2 bg-gray-800 hover:bg-gray-700 rounded-full transition-colors text-gray-400">✕</button>
-            </div>
+
 
             {/* Scrollable Body */}
-            <div className="overflow-y-auto p-6 md:p-10 hide-scrollbar flex-1">
-              <form onSubmit={saveConfig} className="space-y-6 md:space-y-8">
-                <div className="bg-black/40 rounded-xl md:rounded-2xl p-4 md:p-6 border border-gray-800 h-48 md:h-64 overflow-y-auto font-mono text-xs">
-                  <div className="flex items-center gap-2 mb-3 md:mb-4 text-blue-400 font-bold uppercase tracking-widest sticky top-0 bg-black/10 backdrop-blur-sm py-1">
+            <div className="overflow-y-auto p-4 md:p-10 hide-scrollbar flex-1">
+              <form onSubmit={saveConfig} className="space-y-4 md:space-y-8">
+                <div className="bg-black/40 rounded-lg md:rounded-2xl p-3 md:p-6 border border-gray-800 h-40 md:h-64 overflow-y-auto font-mono text-xs">
+                  <div className="flex items-center gap-2 mb-2 md:mb-4 text-blue-400 font-bold uppercase tracking-widest sticky top-0 bg-black/10 backdrop-blur-sm py-1">
                     <Terminal size={14} /> Link Status
                   </div>
                   {debugLogs.map((log, i) => (
@@ -368,9 +378,29 @@ export default function App() {
                   ))}
                 </div>
 
-                <div className="pt-4 md:pt-6 flex gap-4 md:gap-6">
-                  <button type="button" onClick={() => setShowSettings(false)} className="flex-1 py-4 md:py-6 bg-gray-800 rounded-xl md:rounded-2xl font-black text-lg md:text-xl hover:bg-gray-700 transition-all">CLOSE</button>
-                  <button type="submit" className="flex-1 py-4 md:py-6 bg-blue-600 rounded-xl md:rounded-2xl font-black text-lg md:text-xl hover:bg-blue-500 shadow-xl shadow-blue-600/20 active:scale-95 transition-all">RE-LINK</button>
+                <div className="flex flex-col gap-4">
+                  <span className="text-gray-400 font-bold uppercase tracking-widest text-sm">Measurement Units</span>
+                  <div className="flex gap-2 p-1 bg-black/40 rounded-2xl border border-gray-800">
+                    <button
+                      type="button"
+                      onClick={() => { setUnits('KM'); localStorage.setItem('hud_units', 'KM'); }}
+                      className={`flex-1 py-3 md:py-4 rounded-xl font-black transition-all ${units === 'KM' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-500 hover:text-gray-300'}`}
+                    >
+                      KILOMETERS (KM)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setUnits('MI'); localStorage.setItem('hud_units', 'MI'); }}
+                      className={`flex-1 py-3 md:py-4 rounded-xl font-black transition-all ${units === 'MI' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-500 hover:text-gray-300'}`}
+                    >
+                      MILES (MPH/MI)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-2 md:pt-6 flex gap-3 md:gap-6">
+                  <button type="button" onClick={() => setShowSettings(false)} className="flex-1 py-3 md:py-6 bg-gray-800 rounded-xl md:rounded-2xl font-black text-base md:text-xl hover:bg-gray-700 transition-all">CLOSE</button>
+                  <button type="submit" className="flex-1 py-3 md:py-6 bg-blue-600 rounded-xl md:rounded-2xl font-black text-base md:text-xl hover:bg-blue-500 shadow-xl shadow-blue-600/20 active:scale-95 transition-all">RE-LINK</button>
                 </div>
               </form>
             </div>
@@ -378,14 +408,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Disconnected Notice */}
-      {!isMqttConnected && !showSettings && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-          <div className="bg-red-600/10 border border-red-600/50 text-red-500 px-10 py-6 rounded-full animate-pulse uppercase font-black tracking-[0.3em] backdrop-blur-xl flex items-center gap-6 shadow-2xl">
-            <RefreshCw className="animate-spin" size={32} /> Searching for Vehicle...
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

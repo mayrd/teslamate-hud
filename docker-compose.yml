@@ -1,7 +1,8 @@
 services:
-  teslahud:
+  teslamate-hud:
     build: .
-    container_name: teslahud
+    #image: ghcr.io/mayrd/teslamate-hud:latest
+    container_name: teslamate-hud
     restart: unless-stopped
     environment:
       - MQTT_URL

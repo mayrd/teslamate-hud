@@ -27,3 +27,4 @@ dist-ssr
 /local
 .env
 deploy.sh
+docker-compose.yml
