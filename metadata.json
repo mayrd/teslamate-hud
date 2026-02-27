@@ -1,0 +1,5 @@
+{
+  "name": "TeslaHUD",
+  "description": "A high-performance mirrored Head-Up Display (HUD) for Tesla drivers, powered by TeslaMate MQTT data and Gemini AI insights.",
+  "requestFramePermissions": []
+}
