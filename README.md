@@ -1,6 +1,6 @@
-# 🚀 TeslaReflect HUD Setup Guide
+# 🚀 teslamate-HUD Setup Guide
 
-TeslaReflect HUD is a high-performance mirrored display for your Tesla, designed to be placed on your dashboard and reflected in the windshield. It connects to your **TeslaMate** MQTT broker via a secure server-side proxy.
+teslamate-HUD is a high-performance mirrored display for your Tesla, designed to be placed on your dashboard and reflected in the windshield. It connects to your **TeslaMate** MQTT broker via a secure server-side proxy.
 
 ## 🛠️ Deployment Options
 

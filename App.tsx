@@ -15,7 +15,6 @@ import {
   MapPin,
   Clock,
   Terminal,
-  Link2,
   Play
 } from 'lucide-react';
 
@@ -200,14 +199,7 @@ export default function App() {
 
   const saveConfig = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const newConfig: MqttConfig = {
-      proxyUrl: formData.get('proxyUrl') as string,
-      topicPrefix: formData.get('topicPrefix') as string,
-      carId: parseInt(formData.get('carId') as string)
-    };
-    setConfig(newConfig);
-    localStorage.setItem('mqtt_config', JSON.stringify(newConfig));
+    setConfig({ ...config });
     setShowSettings(false);
     setIsMqttConnected(false);
     setDebugLogs([]);
@@ -228,8 +220,6 @@ export default function App() {
       return '';
     }
   };
-
-  const detectedProxyUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
   return (
     <div
@@ -346,53 +336,37 @@ export default function App() {
 
       {/* Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-6 cursor-default">
-          <div className="bg-gray-900 border border-gray-800 rounded-[40px] w-full max-w-2xl p-10 text-white animate-in zoom-in-95 duration-200">
-            <h2 className="text-4xl font-black mb-10 flex items-center gap-5">
-              <Settings size={40} className="text-blue-500" /> HUD Config
-            </h2>
+        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 md:p-6 cursor-default">
+          <div className="bg-gray-900 border border-gray-800 rounded-3xl md:rounded-[40px] w-full max-w-2xl flex flex-col max-h-[95dvh] text-white animate-in zoom-in-95 duration-200">
 
-            <form onSubmit={saveConfig} className="space-y-8">
-              <div>
-                <label className="block text-sm text-gray-500 uppercase font-black mb-2 tracking-[0.2em] flex items-center gap-2">
-                  <Link2 size={16} /> Proxy WebSocket URL
-                </label>
-                <input
-                  name="proxyUrl"
-                  defaultValue={config.proxyUrl}
-                  className="w-full bg-gray-800 p-6 rounded-2xl border border-gray-700 outline-none text-xl focus:border-blue-500 font-mono"
-                  placeholder={detectedProxyUrl}
-                />
-                <p className="text-gray-600 text-sm mt-2 font-medium">Leave blank to auto-detect (recommended for reverse proxies)</p>
-              </div>
+            {/* Header */}
+            <div className="px-6 py-5 md:px-10 md:py-8 border-b border-gray-800 shrink-0 flex items-center justify-between">
+              <h2 className="text-2xl md:text-4xl font-black flex items-center gap-4">
+                <Settings className="w-8 h-8 md:w-10 md:h-10 text-blue-500" /> HUD Config
+              </h2>
+              <button type="button" onClick={() => setShowSettings(false)} className="p-2 bg-gray-800 hover:bg-gray-700 rounded-full transition-colors text-gray-400">✕</button>
+            </div>
 
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm text-gray-500 uppercase font-black mb-2 tracking-[0.2em]">TeslaMate Prefix</label>
-                  <input name="topicPrefix" defaultValue={config.topicPrefix} className="w-full bg-gray-800 p-6 rounded-2xl border border-gray-700 outline-none text-xl" required />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-500 uppercase font-black mb-2 tracking-[0.2em]">Car ID</label>
-                  <input name="carId" type="number" defaultValue={config.carId} className="w-full bg-gray-800 p-6 rounded-2xl border border-gray-700 outline-none text-xl" required />
-                </div>
-              </div>
-
-              <div className="bg-black/40 rounded-2xl p-6 border border-gray-800 h-48 overflow-y-auto font-mono text-xs">
-                <div className="flex items-center gap-2 mb-4 text-blue-400 font-bold uppercase tracking-widest sticky top-0 bg-black/10 backdrop-blur-sm py-1">
-                  <Terminal size={16} /> Link Status
-                </div>
-                {debugLogs.map((log, i) => (
-                  <div key={i} className={`mb-2 ${log.includes('✅') ? 'text-green-400' : log.includes('❌') ? 'text-red-400' : 'text-gray-500'}`}>
-                    {log}
+            {/* Scrollable Body */}
+            <div className="overflow-y-auto p-6 md:p-10 hide-scrollbar flex-1">
+              <form onSubmit={saveConfig} className="space-y-6 md:space-y-8">
+                <div className="bg-black/40 rounded-xl md:rounded-2xl p-4 md:p-6 border border-gray-800 h-48 md:h-64 overflow-y-auto font-mono text-xs">
+                  <div className="flex items-center gap-2 mb-3 md:mb-4 text-blue-400 font-bold uppercase tracking-widest sticky top-0 bg-black/10 backdrop-blur-sm py-1">
+                    <Terminal size={14} /> Link Status
                   </div>
-                ))}
-              </div>
+                  {debugLogs.map((log, i) => (
+                    <div key={i} className={`mb-1 md:mb-2 ${log.includes('✅') ? 'text-green-400' : log.includes('❌') ? 'text-red-400' : 'text-gray-500'}`}>
+                      {log}
+                    </div>
+                  ))}
+                </div>
 
-              <div className="pt-6 flex gap-6">
-                <button type="button" onClick={() => setShowSettings(false)} className="flex-1 py-6 bg-gray-800 rounded-2xl font-black text-xl hover:bg-gray-700 transition-all">CLOSE</button>
-                <button type="submit" className="flex-1 py-6 bg-blue-600 rounded-2xl font-black text-xl hover:bg-blue-500 shadow-xl shadow-blue-600/20 active:scale-95 transition-all">RE-LINK</button>
-              </div>
-            </form>
+                <div className="pt-4 md:pt-6 flex gap-4 md:gap-6">
+                  <button type="button" onClick={() => setShowSettings(false)} className="flex-1 py-4 md:py-6 bg-gray-800 rounded-xl md:rounded-2xl font-black text-lg md:text-xl hover:bg-gray-700 transition-all">CLOSE</button>
+                  <button type="submit" className="flex-1 py-4 md:py-6 bg-blue-600 rounded-xl md:rounded-2xl font-black text-lg md:text-xl hover:bg-blue-500 shadow-xl shadow-blue-600/20 active:scale-95 transition-all">RE-LINK</button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

@@ -96,14 +96,37 @@ export class MqttService {
           if (topic === `${prefix}/est_arrival_time`) updates.estArrivalTime = data;
           if (topic === `${prefix}/time_to_arrival`) updates.timeToArrival = parseFloat(data);
 
-          // ── Navigation (rich active_route JSON) ─────────────────────
+          // ── Navigation (new active_route flat topics) ───────────────
+          if (topic === `${prefix}/active_route_destination`) updates.destination = data;
+          if (topic === `${prefix}/active_route_minutes_to_arrival`) {
+            const mins = parseFloat(data);
+            updates.timeToArrival = mins;
+            if (mins > 0) {
+              updates.estArrivalTime = new Date(Date.now() + mins * 60000).toISOString();
+            }
+          }
+
+          // ── Navigation (rich active_route JSON payload) ─────────────
           if (topic === `${prefix}/active_route`) {
             try {
               const route = JSON.parse(data);
-              // Only store if no error (i.e. a real route is active)
-              updates.activeRoute = route.error ? null : route;
+
+              if (route.error) {
+                updates.activeRoute = null;
+                updates.destination = '';
+                updates.timeToArrival = 0;
+                updates.estArrivalTime = '';
+              } else {
+                updates.activeRoute = route;
+                if (route.destination) updates.destination = route.destination;
+                if (route.minutes_to_arrival) {
+                  updates.timeToArrival = parseFloat(route.minutes_to_arrival);
+                  updates.estArrivalTime = new Date(Date.now() + updates.timeToArrival * 60000).toISOString();
+                }
+              }
             } catch {
               updates.activeRoute = null;
+              updates.destination = '';
             }
           }
 
