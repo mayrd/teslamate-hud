@@ -248,7 +248,7 @@ export default function App() {
       </div>
 
       {/* HUD Content */}
-      <div className={`w-full h-full flex flex-col justify-between p-2 md:p-12 transition-transform duration-300 ${hudMode === HUDMode.MIRROR ? 'hud-mirror' :
+      <div className={`w-full h-full flex flex-col justify-between p-4 md:p-12 transition-transform duration-300 ${hudMode === HUDMode.MIRROR ? 'hud-mirror' :
         hudMode === HUDMode.FLIPPED ? 'hud-mirror-flipped' : ''
         }`}>
 
@@ -277,9 +277,10 @@ export default function App() {
         </div>
 
         {/* Mid: Speed */}
-        <div className="relative flex flex-col items-center justify-center">
-          <div className="grid grid-cols-3 items-center w-full relative">
+        <div className="relative flex flex-col items-center justify-center flex-1">
+          <div className="flex flex-col md:grid md:grid-cols-3 items-center w-full relative">
 
+            {/* Left Stat (Range) - Only on MD+ */}
             <div className="hidden md:flex justify-start pl-4 lg:pl-12">
               <div className="flex flex-col items-center justify-center w-48 text-center shrink-0">
                 <span className={`text-6xl lg:text-8xl font-black transition-colors duration-500 ${displayData.range <= 25 ? 'text-red-500 drop-shadow-[0_0_20px_rgba(239,68,68,0.8)]' : 'text-gray-200 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]'}`}>
@@ -290,12 +291,12 @@ export default function App() {
             </div>
 
             {/* Speed (central element) */}
-            <div className="flex flex-col items-center justify-center text-white">
+            <div className="flex flex-col items-center justify-center text-white w-full">
               <div className="flex flex-col items-center">
-                <span className="text-8xl md:text-[14rem] lg:text-[20rem] leading-none font-black tabular-nums tracking-tight drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]">
+                <span className="text-[10rem] md:text-[14rem] lg:text-[20rem] leading-none font-black tabular-nums tracking-tight drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]">
                   {Math.round(convertValue(displayData.speed))}
                 </span>
-                <span className="text-xl md:text-3xl font-bold text-cyan-300 uppercase tracking-widest -mt-2 md:-mt-8 drop-shadow-[0_0_8px_rgba(103,232,249,0.5)]">{speedUnit}</span>
+                <span className="text-2xl md:text-3xl font-bold text-cyan-300 uppercase tracking-widest -mt-4 md:-mt-8 drop-shadow-[0_0_8px_rgba(103,232,249,0.5)]">{speedUnit}</span>
               </div>
             </div>
 
@@ -309,32 +310,29 @@ export default function App() {
             </div>
           </div>
 
-          <div className="w-[80%] max-w-5xl h-8 bg-gray-900/60 rounded-full mt-4 overflow-hidden relative border border-white/10">
+          <div className="w-[85%] md:w-[80%] max-w-5xl h-6 md:h-8 bg-gray-900/60 rounded-full mt-8 md:mt-4 overflow-hidden relative border border-white/10">
             <div className="absolute left-1/2 top-0 bottom-0 w-1.5 bg-white/30 z-10"></div>
             <div className={`absolute top-0 bottom-0 transition-all duration-300 ${displayData.power < 0 ? 'bg-green-500 shadow-[0_0_25px_rgba(34,197,94,0.6)]' : 'bg-orange-600 shadow-[0_0_25px_rgba(249,115,22,0.6)]'}`} style={{ left: displayData.power < 0 ? `${50 + (displayData.power / 60) * 50}%` : '50%', right: displayData.power > 0 ? `${50 - (displayData.power / 300) * 50}%` : '50%' }} />
           </div>
-        </div>
 
-        {/* Bottom: Stats */}
-        <div className="grid grid-cols-3 items-end w-full">
-          <div className="flex flex-col items-start gap-2">
-
-            <div className="flex items-baseline gap-1 md:hidden ml-1 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">
-              <span className={`text-2xl font-black transition-colors duration-500 ${displayData.range <= 25 ? 'text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'text-gray-200'}`}>
+          {/* Portrait-only Row: Gear & Range (moved below acceleration bar) */}
+          <div className="flex md:hidden w-full justify-between items-center px-12 mt-8">
+            <div className="text-5xl font-black text-white italic tracking-tighter bg-white/5 px-6 py-3 rounded-2xl border border-white/10 backdrop-blur-sm">
+              {displayData.gear || 'P'}
+            </div>
+            <div className="flex flex-col items-center drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]">
+              <span className={`text-6xl font-black transition-colors duration-500 ${displayData.range <= 25 ? 'text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]' : 'text-gray-200'}`}>
                 {Math.round(convertValue(displayData.range))}
               </span>
-              <span className="text-sm font-bold text-cyan-300 uppercase">{distUnit}</span>
+              <span className="text-sm font-bold text-cyan-300 uppercase -mt-2">{distUnit}</span>
             </div>
           </div>
+        </div>
 
-          <div className="flex flex-col items-center justify-end pb-2">
-            <div className="flex md:hidden items-center">
-              <div className="text-5xl font-black text-white italic tracking-tighter w-20 text-center bg-white/5 px-2 py-2 rounded-2xl border border-white/10 opacity-80 backdrop-blur-sm">
-                {displayData.gear || 'P'}
-              </div>
-            </div>
-          </div>
-
+        {/* Bottom: Empty (Desktop/Landscape) or Placeholder */}
+        <div className="hidden md:grid grid-cols-3 items-end w-full">
+          <div></div>
+          <div></div>
           <div></div>
         </div>
       </div>
