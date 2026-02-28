@@ -52,7 +52,9 @@ export default function App() {
   });
 
   const [data, setData] = useState<TeslaData>(INITIAL_DATA);
-  const [hudMode, setHudMode] = useState<HUDMode>(HUDMode.MIRROR);
+  const [hudMode, setHudMode] = useState<HUDMode>(() => {
+    return (localStorage.getItem('hud_mode') as HUDMode) || HUDMode.MIRROR;
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMqttConnected, setIsMqttConnected] = useState(false);
@@ -71,10 +73,18 @@ export default function App() {
   const lastTapRef = useRef<number>(0);
   const mqttServiceRef = useRef<MqttService | null>(null);
   const wakeLockRef = useRef<any>(null);
+  const logEndRef = useRef<HTMLDivElement>(null);
 
   const addDebugLog = useCallback((msg: string) => {
-    setDebugLogs(prev => [msg, ...prev].slice(0, 15));
+    setDebugLogs(prev => [...prev, msg].slice(-20)); // Keep last 20, newest at the bottom
   }, []);
+
+  // Auto-scroll logs
+  useEffect(() => {
+    if (showSettings) {
+      logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [debugLogs, showSettings]);
 
   // Sync fullscreen state
   useEffect(() => {
@@ -201,14 +211,18 @@ export default function App() {
 
   const cycleHudMode = () => {
     setHudMode(prev => {
-      if (prev === HUDMode.NORMAL) return HUDMode.MIRROR;
-      if (prev === HUDMode.MIRROR) return HUDMode.FLIPPED;
-      return HUDMode.NORMAL;
+      let nextMode = HUDMode.NORMAL;
+      if (prev === HUDMode.NORMAL) nextMode = HUDMode.MIRROR;
+      else if (prev === HUDMode.MIRROR) nextMode = HUDMode.FLIPPED;
+
+      localStorage.setItem('hud_mode', nextMode);
+      return nextMode;
     });
   };
 
-  const saveConfig = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleRelink = (e: React.FormEvent) => {
     e.preventDefault();
+    // Re-triggering the useEffect by updating the config reference
     setConfig({ ...config });
     setShowSettings(false);
     setIsMqttConnected(false);
@@ -243,7 +257,12 @@ export default function App() {
 
       {/* Status & Notifications */}
       <div className="absolute top-6 right-6 z-40 pointer-events-none flex items-center gap-4 bg-black/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/5">
-        {!isMqttConnected && !showSettings && (
+        {isDemo && (
+          <span className="text-indigo-400 font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs">
+            DEMO: {getDemoLabel(demoElapsed)} - {Math.ceil(DEMO_DURATION - demoElapsed)}s
+          </span>
+        )}
+        {!isMqttConnected && !showSettings && !isDemo && (
           <div className="flex items-center gap-3">
             <RefreshCw className="animate-spin text-yellow-500 w-4 h-4" />
             <span className="text-yellow-500 font-black uppercase tracking-[0.2em] text-[10px] md:text-xs">Searching for Vehicle...</span>
@@ -260,38 +279,7 @@ export default function App() {
         hudMode === HUDMode.FLIPPED ? 'hud-mirror-flipped' : ''
         }`}>
 
-        {/* Top: Nav (Floating to prevent layout jump) */}
-        <div className="absolute top-2 md:top-4 left-0 right-0 flex flex-col items-center justify-center z-20 pointer-events-none">
-          {(displayData.destination || displayData.activeRoute) && (
-            <div className="animate-in fade-in slide-in-from-top duration-700 flex flex-col items-center justify-center">
-              <div className="flex flex-wrap items-center justify-center gap-x-6 md:gap-x-12 gap-y-2 text-gray-200 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)] bg-black/20 backdrop-blur-sm px-6 py-2 rounded-full border border-white/5">
-                <div className="flex items-center gap-2 md:gap-4">
-                  <Clock className="w-5 h-5 md:w-8 md:h-8 text-cyan-300" />
-                  <span className="text-xl md:text-3xl font-bold">ETA: {formatTime(displayData.estArrivalTime)}</span>
-                </div>
 
-                {displayData.timeToArrival > 0 && (
-                  <div className="flex items-center gap-2 md:gap-4">
-                    <span className="text-gray-500 text-xl font-black">•</span>
-                    <span className="text-xl md:text-3xl font-bold">{Math.round(displayData.timeToArrival)}</span>
-                    <span className="text-lg md:text-xl font-bold text-cyan-200">min</span>
-                  </div>
-                )}
-
-                {displayData.activeRoute?.miles_to_arrival && (
-                  <div className="flex items-center gap-2 md:gap-4">
-                    <span className="text-gray-500 text-xl font-black">•</span>
-                    <Navigation className="w-5 h-5 md:w-8 md:h-8 text-cyan-300 rotate-45" />
-                    <span className="text-xl md:text-3xl font-bold">
-                      {Math.round(units === 'KM' ? displayData.activeRoute.miles_to_arrival * 1.60934 : displayData.activeRoute.miles_to_arrival)}
-                    </span>
-                    <span className="text-lg md:text-xl font-bold text-cyan-200">{distUnit}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
 
         {/* Mid: Speed */}
         <div className="relative flex flex-col items-center justify-center flex-1">
@@ -327,23 +315,56 @@ export default function App() {
             </div>
           </div>
 
-          <div className="w-[85%] md:w-[80%] max-w-5xl h-6 md:h-8 bg-gray-900/60 rounded-full mt-8 md:mt-4 overflow-hidden relative border border-white/10">
-            <div className="absolute left-1/2 top-0 bottom-0 w-1.5 bg-white/30 z-10"></div>
-            <div className={`absolute top-0 bottom-0 transition-all duration-300 ${displayData.power < 0 ? 'bg-green-500 shadow-[0_0_25px_rgba(34,197,94,0.6)]' : 'bg-orange-600 shadow-[0_0_25px_rgba(249,115,22,0.6)]'}`} style={{ left: displayData.power < 0 ? `${50 + (displayData.power / 60) * 50}%` : '50%', right: displayData.power > 0 ? `${50 - (displayData.power / 300) * 50}%` : '50%' }} />
+          <div className="w-[66%] md:w-[50%] max-w-3xl h-4 md:h-6 bg-gray-900/60 rounded-full mt-6 md:mt-4 overflow-hidden relative border border-white/10 shrink-0">
+            <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-white/30 z-10"></div>
+            <div className={`absolute top-0 bottom-0 transition-all duration-300 ${displayData.power < 0 ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.6)]' : 'bg-orange-600 shadow-[0_0_15px_rgba(249,115,22,0.6)]'}`} style={{ left: displayData.power < 0 ? `${50 + (displayData.power / 60) * 50}%` : '50%', right: displayData.power > 0 ? `${50 - (displayData.power / 300) * 50}%` : '50%' }} />
           </div>
 
-          {/* Portrait-only Row: Gear & Range (moved below acceleration bar) */}
-          <div className="flex md:hidden w-full justify-between items-center px-12 mt-8">
-            <div className="text-5xl font-black text-white italic tracking-tighter bg-white/5 px-6 py-3 rounded-2xl border border-white/10 backdrop-blur-sm">
+          {/* Portrait-only Row: Gear & Range */}
+          <div className="flex md:hidden w-full justify-between items-center px-12 mt-6 shrink-0">
+            <div className="text-4xl font-black text-white italic tracking-tighter bg-white/5 px-5 py-2 rounded-2xl border border-white/10 backdrop-blur-sm">
               {displayData.gear || 'P'}
             </div>
             <div className="flex flex-col items-center drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]">
-              <span className={`text-6xl font-black transition-colors duration-500 ${displayData.range <= 25 ? 'text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]' : 'text-gray-200'}`}>
+              <span className={`text-5xl font-black transition-colors duration-500 ${displayData.range <= 25 ? 'text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]' : 'text-gray-200'}`}>
                 {Math.round(convertValue(displayData.range))}
               </span>
-              <span className="text-sm font-bold text-cyan-300 uppercase -mt-2">{distUnit}</span>
+              <span className="text-xs font-bold text-cyan-300 uppercase -mt-1">{distUnit}</span>
             </div>
           </div>
+
+          {/* Nav Overview (Relative positioning, allowing it to take up space directly below the central content without overlapping and disappearing) */}
+          {(displayData.destination || displayData.activeRoute) && (
+            <div className="mt-6 md:mt-6 w-full flex flex-col items-center justify-center z-20 pointer-events-none shrink-0 relative">
+              <div className="animate-in fade-in slide-in-from-top duration-700 flex flex-col items-center justify-center">
+                <div className="flex flex-wrap items-center justify-center gap-x-4 md:gap-x-12 gap-y-2 text-gray-200 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)] bg-black/20 backdrop-blur-sm px-4 md:px-6 py-2 rounded-full border border-white/5 mx-4 text-center">
+                  <div className="flex items-center gap-2 md:gap-4 shrink-0">
+                    <Clock className="w-5 h-5 md:w-8 md:h-8 text-cyan-300" />
+                    <span className="text-lg md:text-3xl font-bold">ETA: {formatTime(displayData.estArrivalTime)}</span>
+                  </div>
+
+                  {displayData.timeToArrival > 0 && (
+                    <div className="flex items-center gap-2 md:gap-4 shrink-0">
+                      <span className="text-gray-500 text-xl font-black hidden md:block">•</span>
+                      <span className="text-lg md:text-3xl font-bold">{Math.round(displayData.timeToArrival)}</span>
+                      <span className="text-base md:text-xl font-bold text-cyan-200 md:ml-0 -ml-1">min</span>
+                    </div>
+                  )}
+
+                  {displayData.activeRoute?.miles_to_arrival && (
+                    <div className="flex items-center gap-2 md:gap-4 shrink-0">
+                      <span className="text-gray-500 text-xl font-black hidden md:block">•</span>
+                      <Navigation className="w-5 h-5 md:w-8 md:h-8 text-cyan-300 rotate-45" />
+                      <span className="text-lg md:text-3xl font-bold">
+                        {Math.round(units === 'KM' ? displayData.activeRoute.miles_to_arrival * 1.60934 : displayData.activeRoute.miles_to_arrival)}
+                      </span>
+                      <span className="text-base md:text-xl font-bold text-cyan-200 md:ml-0 -ml-1">{distUnit}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Bottom: Empty (Desktop/Landscape) or Placeholder */}
@@ -354,18 +375,11 @@ export default function App() {
         </div>
       </div>
 
-      {isDemo && (
-        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 border border-gray-700 px-6 py-2 rounded-full z-50 shadow-2xl">
-          <div className="text-center font-bold text-white uppercase text-xs">
-            {getDemoLabel(demoElapsed)} - {Math.ceil(DEMO_DURATION - demoElapsed)}s Left
-          </div>
-        </div>
-      )}
+
 
       {/* Settings (Discrete) - out of mirror div */}
       {!isFullscreen && (
         <div className="absolute bottom-4 right-4 z-[90] flex gap-4 opacity-100 hover:opacity-100 transition-opacity">
-          <button onClick={isDemo ? stopDemo : startDemo} className={`p-4 rounded-full text-white transition-colors ${isDemo ? 'bg-red-600 hover:bg-red-500' : 'bg-indigo-600 hover:bg-indigo-500'}`} title={isDemo ? 'Stop Demo' : 'Run Demo'}><Play size={24} /></button>
           <button onClick={() => setShowSettings(true)} className="p-4 bg-gray-900 rounded-full text-white hover:bg-gray-800"><Settings size={24} /></button>
           <button onClick={cycleHudMode} className="p-4 bg-gray-900 rounded-full text-white hover:bg-gray-800"><FlipHorizontal size={24} /></button>
           <button onClick={toggleFullscreen} className="p-4 bg-gray-900 rounded-full text-white hover:bg-gray-800">{isFullscreen ? <Minimize2 size={24} /> : <Maximize2 size={24} />}</button>
@@ -374,49 +388,68 @@ export default function App() {
 
       {/* Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-2 md:p-6 cursor-default">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl md:rounded-[40px] w-full max-w-2xl flex flex-col max-h-[98dvh] text-white animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] bg-gray-950 flex flex-col text-white animate-in zoom-in-95 duration-200 cursor-default">
+          <div className="flex-1 overflow-y-auto px-6 py-8 md:px-12 md:py-12 hide-scrollbar">
+            <div className="max-w-4xl mx-auto flex flex-col min-h-full">
 
+              <div className="mb-8 md:mb-12 shrink-0">
+                <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white mb-2">Settings</h2>
+                <p className="text-gray-400 font-medium text-sm md:text-base">Configure display and data connection preferences.</p>
+              </div>
 
+              <form onSubmit={handleRelink} className="flex flex-col flex-1 space-y-6 md:space-y-8">
 
-            {/* Scrollable Body */}
-            <div className="overflow-y-auto p-4 md:p-10 hide-scrollbar flex-1">
-              <form onSubmit={saveConfig} className="space-y-4 md:space-y-8">
-                <div className="bg-black/40 rounded-lg md:rounded-2xl p-3 md:p-6 border border-gray-800 h-40 md:h-64 overflow-y-auto font-mono text-xs">
-                  <div className="flex items-center gap-2 mb-2 md:mb-4 text-blue-400 font-bold uppercase tracking-widest sticky top-0 bg-black/10 backdrop-blur-sm py-1">
-                    <Terminal size={14} /> Link Status
-                  </div>
-                  {debugLogs.map((log, i) => (
-                    <div key={i} className={`mb-1 md:mb-2 ${log.includes('✅') ? 'text-green-400' : log.includes('❌') ? 'text-red-400' : 'text-gray-500'}`}>
-                      {log}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex flex-col gap-4">
-                  <span className="text-gray-400 font-bold uppercase tracking-widest text-sm">Measurement Units</span>
-                  <div className="flex gap-2 p-1 bg-black/40 rounded-2xl border border-gray-800">
+                <div className="flex flex-col gap-3 shrink-0">
+                  <span className="text-gray-500 font-bold uppercase tracking-widest text-xs md:text-sm">Measurement Units</span>
+                  <div className="flex gap-2 p-1.5 bg-gray-900 rounded-xl border border-gray-800 shadow-inner">
                     <button
                       type="button"
                       onClick={() => { setUnits('KM'); localStorage.setItem('hud_units', 'KM'); }}
-                      className={`flex-1 py-3 md:py-4 rounded-xl font-black transition-all ${units === 'KM' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-500 hover:text-gray-300'}`}
+                      className={`flex-1 py-2.5 md:py-4 rounded-lg font-bold text-xs md:text-base transition-all ${units === 'KM' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-gray-400 hover:text-white'}`}
                     >
                       KILOMETERS (KM)
                     </button>
                     <button
                       type="button"
                       onClick={() => { setUnits('MI'); localStorage.setItem('hud_units', 'MI'); }}
-                      className={`flex-1 py-3 md:py-4 rounded-xl font-black transition-all ${units === 'MI' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-500 hover:text-gray-300'}`}
+                      className={`flex-1 py-2.5 md:py-4 rounded-lg font-bold text-xs md:text-base transition-all ${units === 'MI' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-gray-400 hover:text-white'}`}
                     >
                       MILES (MPH/MI)
                     </button>
                   </div>
                 </div>
 
-                <div className="pt-2 md:pt-6 flex gap-3 md:gap-6">
-                  <button type="button" onClick={() => setShowSettings(false)} className="flex-1 py-3 md:py-6 bg-gray-800 rounded-xl md:rounded-2xl font-black text-base md:text-xl hover:bg-gray-700 transition-all">CLOSE</button>
-                  <button type="submit" className="flex-1 py-3 md:py-6 bg-blue-600 rounded-xl md:rounded-2xl font-black text-base md:text-xl hover:bg-blue-500 shadow-xl shadow-blue-600/20 active:scale-95 transition-all">RE-LINK</button>
+                <div className="flex flex-col gap-3 shrink-0">
+                  <span className="text-gray-500 font-bold uppercase tracking-widest text-xs md:text-sm">Testing & Simulation</span>
+                  <button
+                    type="button"
+                    onClick={isDemo ? stopDemo : startDemo}
+                    className={`w-full py-2.5 md:py-4 rounded-xl font-bold text-xs md:text-base transition-all border ${isDemo ? 'bg-red-600/20 text-red-500 border-red-500/50 hover:bg-red-600/30 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : 'bg-indigo-600/20 text-indigo-400 border-indigo-500/50 hover:bg-indigo-600/30'}`}
+                  >
+                    {isDemo ? 'STOP DEMO SEQUENCE' : 'START DEMO SEQUENCE'}
+                  </button>
                 </div>
+
+                <div className="flex flex-col gap-3 flex-1">
+                  <span className="text-gray-500 font-bold uppercase tracking-widest text-xs md:text-sm flex items-center gap-2">
+                    <Terminal size={14} className="md:w-4 md:h-4" /> Link Status
+                  </span>
+                  <div className="bg-gray-900 rounded-2xl p-4 md:p-6 border border-gray-800 shadow-inner flex flex-col h-48 md:h-auto md:flex-1 overflow-y-auto font-mono text-xs md:text-sm">
+                    {debugLogs.length === 0 && <div className="text-gray-600 italic">No connection established yet...</div>}
+                    {debugLogs.map((log, i) => (
+                      <div key={i} className={`mb-2 md:mb-3 ${log.includes('✅') ? 'text-green-400' : log.includes('❌') ? 'text-red-400' : 'text-gray-400'}`}>
+                        {log}
+                      </div>
+                    ))}
+                    <div ref={logEndRef} />
+                  </div>
+                </div>
+
+                <div className="pt-4 md:pt-8 flex gap-3 md:gap-6 pb-4 md:pb-8 shrink-0 mt-auto">
+                  <button type="button" onClick={() => setShowSettings(false)} className="flex-1 py-3 md:py-5 bg-gray-800 rounded-xl font-bold text-sm md:text-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-all">DISMISS</button>
+                  <button type="submit" className="flex-1 py-3 md:py-5 bg-blue-600 rounded-xl font-bold text-sm md:text-lg text-white hover:bg-blue-500 shadow-md shadow-blue-600/20 active:scale-95 transition-all outline-none">RE-LINK DATA FEED</button>
+                </div>
+
               </form>
             </div>
           </div>

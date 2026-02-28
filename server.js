@@ -48,10 +48,15 @@ mqttClient.on('connect', () => {
   console.log(`📡 MQTT: Subscribed to ${topicPattern}`);
 });
 
+const topicCache = new Map();
+
 mqttClient.on('message', (topic, message) => {
+  const dataString = message.toString();
+  topicCache.set(topic, dataString);
+
   const payload = JSON.stringify({
     topic,
-    data: message.toString(),
+    data: dataString,
     timestamp: Date.now()
   });
 
@@ -70,7 +75,32 @@ wss.on('connection', (ws, req) => {
   const ip = req.socket.remoteAddress;
   console.log(`📱 Client connected from ${ip}`);
   ws.send(JSON.stringify({ type: 'status', msg: 'Linked to Tesla Proxy' }));
+
+  // Send all cached values immediately to the newly connected client
+  topicCache.forEach((data, topic) => {
+    ws.send(JSON.stringify({
+      topic,
+      data,
+      timestamp: Date.now()
+    }));
+  });
 });
+
+// Broadcast full cached state once a minute to all connected clients
+setInterval(() => {
+  const timestamp = Date.now();
+  wss.clients.forEach((client) => {
+    if (client.readyState === 1) { // OPEN
+      topicCache.forEach((data, topic) => {
+        client.send(JSON.stringify({
+          topic,
+          data,
+          timestamp
+        }));
+      });
+    }
+  });
+}, 60 * 1000);
 
 // Fallback for SPA
 app.get('*', (req, res) => {
