@@ -24,7 +24,7 @@ dist-ssr
 *.sw?
 
 # other
-/local
 .env
 deploy.sh
 docker-compose.yml
+package-lock.json
