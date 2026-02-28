@@ -305,17 +305,30 @@ export default function App() {
               </div>
             </div>
 
-            {/* Right Stat (Gear) - Only on MD+ */}
+            {/* Right Stat (Gear & Power Bar) - Only on MD+ */}
             <div className="hidden md:flex justify-end pr-4 lg:pr-12">
-              <div className="flex items-center justify-center w-48 shrink-0">
+              <div className="flex items-center justify-center gap-6 shrink-0">
+                {/* Gear Indicator */}
                 <div className="text-6xl lg:text-8xl font-black text-white italic tracking-tighter w-28 lg:w-32 text-center bg-white/5 px-4 py-2 rounded-2xl border border-white/10">
                   {displayData.gear || 'P'}
+                </div>
+
+                {/* Vertical Power Bar (Landscape only) */}
+                <div className="w-4 h-32 md:h-48 bg-gray-900/60 rounded-full overflow-hidden relative border border-white/10 shrink-0">
+                  <div className="absolute top-1/2 left-0 right-0 h-1 bg-white/30 z-10"></div>
+                  <div
+                    className={`absolute left-0 right-0 transition-all duration-300 ${displayData.power < 0 ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.6)]' : 'bg-orange-600 shadow-[0_0_15px_rgba(249,115,22,0.6)]'}`}
+                    style={{
+                      top: displayData.power > 0 ? `${50 - (displayData.power / 300) * 50}%` : '50%',
+                      bottom: displayData.power < 0 ? `${50 + (displayData.power / 60) * 50}%` : '50%'
+                    }}
+                  />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="w-[66%] md:w-[50%] max-w-3xl h-4 md:h-6 bg-gray-900/60 rounded-full mt-6 md:mt-4 overflow-hidden relative border border-white/10 shrink-0">
+          <div className="w-[66%] md:hidden max-w-3xl h-4 bg-gray-900/60 rounded-full mt-6 overflow-hidden relative border border-white/10 shrink-0">
             <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-white/30 z-10"></div>
             <div className={`absolute top-0 bottom-0 transition-all duration-300 ${displayData.power < 0 ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.6)]' : 'bg-orange-600 shadow-[0_0_15px_rgba(249,115,22,0.6)]'}`} style={{ left: displayData.power < 0 ? `${50 + (displayData.power / 60) * 50}%` : '50%', right: displayData.power > 0 ? `${50 - (displayData.power / 300) * 50}%` : '50%' }} />
           </div>
@@ -333,9 +346,9 @@ export default function App() {
             </div>
           </div>
 
-          {/* Nav Overview (Relative positioning, allowing it to take up space directly below the central content without overlapping and disappearing) */}
+          {/* Nav Overview (Portrait only, to prevent center jump in landscape) */}
           {(displayData.destination || displayData.activeRoute) && (
-            <div className="mt-6 md:mt-6 w-full flex flex-col items-center justify-center z-20 pointer-events-none shrink-0 relative">
+            <div className="mt-6 md:hidden w-full flex flex-col items-center justify-center z-20 pointer-events-none shrink-0 relative">
               <div className="animate-in fade-in slide-in-from-top duration-700 flex flex-col items-center justify-center">
                 <div className="flex flex-wrap items-center justify-center gap-x-4 md:gap-x-12 gap-y-2 text-gray-200 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)] bg-black/20 backdrop-blur-sm px-4 md:px-6 py-2 rounded-full border border-white/5 mx-4 text-center">
                   <div className="flex items-center gap-2 md:gap-4 shrink-0">
@@ -367,11 +380,37 @@ export default function App() {
           )}
         </div>
 
-        {/* Bottom: Empty (Desktop/Landscape) or Placeholder */}
-        <div className="hidden md:grid grid-cols-3 items-end w-full">
-          <div></div>
-          <div></div>
-          <div></div>
+        {/* Bottom: Navigation (Landscape - Absolute to avoid layout shift) */}
+        <div className="hidden md:flex absolute bottom-8 left-0 right-0 justify-center z-50 pointer-events-none">
+          {(displayData.destination || displayData.activeRoute) && (
+            <div className="animate-in fade-in slide-in-from-bottom duration-700">
+              <div className="flex items-center justify-center gap-x-12 text-gray-200 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)] bg-black/40 backdrop-blur-md px-10 py-3 rounded-full border border-white/10 text-center">
+                <div className="flex items-center gap-4 shrink-0">
+                  <Clock className="w-8 h-8 text-cyan-300" />
+                  <span className="text-3xl font-bold">ETA: {formatTime(displayData.estArrivalTime)}</span>
+                </div>
+
+                {displayData.timeToArrival > 0 && (
+                  <div className="flex items-center gap-4 shrink-0">
+                    <span className="text-gray-500 text-xl font-black">•</span>
+                    <span className="text-3xl font-bold">{Math.round(displayData.timeToArrival)}</span>
+                    <span className="text-xl font-bold text-cyan-200">min</span>
+                  </div>
+                )}
+
+                {displayData.activeRoute?.miles_to_arrival && (
+                  <div className="flex items-center gap-4 shrink-0">
+                    <span className="text-gray-500 text-xl font-black">•</span>
+                    <Navigation className="w-8 h-8 text-cyan-300 rotate-45" />
+                    <span className="text-3xl font-bold">
+                      {Math.round(units === 'KM' ? displayData.activeRoute.miles_to_arrival * 1.60934 : displayData.activeRoute.miles_to_arrival)}
+                    </span>
+                    <span className="text-xl font-bold text-cyan-200">{distUnit}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
